@@ -21,7 +21,7 @@ designed so Slack can be swapped for a mobile app later with minimal changes.
 ## Build status
 
 - [x] Step 1 — Project scaffold
-- [ ] Step 2 — MoneyFlows client
+- [x] Step 2 — MoneyFlows client
 - [ ] Step 3 — R2 client
 - [ ] Step 4 — Claude API wrapper + context builder
 - [ ] Step 5 — Database layer
@@ -38,11 +38,11 @@ designed so Slack can be swapped for a mobile app later with minimal changes.
 
 ## Current step
 
-**Step 1 complete. Begin Step 2.**
+**Step 2 complete. Begin Step 3.**
 
-Step 2 goal: Build the MoneyFlows client — JWT auth, token expiry check,
-Outlier 50 fetch, Weekly Flows fetch, PDF URL extraction from content field.
-Requires MONEYFLOWS_EMAIL and MONEYFLOWS_PASSWORD in .env.
+Step 3 goal: Build the Cloudflare R2 client — upload a PDF by URL, store in
+the trading-pdfs bucket, return the R2 URL. Requires R2_ACCOUNT_ID,
+R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_PUBLIC_URL in .env.
 
 ---
 
@@ -68,6 +68,9 @@ None yet.
   Token expiry is encoded in the JWT payload (exp field). Decode before each request.
   If expired or within 5 minutes of expiry, re-authenticate and store new token.
   Never assume a token is still valid across sessions.
+- MoneyFlows API is behind Cloudflare bot protection — all requests must include a
+  browser-like User-Agent plus Origin/Referer headers. Bare requests return 403.
+  Current working UA: Chrome 131 on macOS.
 
 ---
 
