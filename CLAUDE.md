@@ -22,7 +22,7 @@ designed so Slack can be swapped for a mobile app later with minimal changes.
 
 - [x] Step 1 — Project scaffold
 - [x] Step 2 — MoneyFlows client
-- [ ] Step 3 — R2 client
+- [x] Step 3 — R2 client
 - [ ] Step 4 — Claude API wrapper + context builder
 - [ ] Step 5 — Database layer
 - [ ] Step 6 — Outlier 50 module end to end (command line)
@@ -38,11 +38,12 @@ designed so Slack can be swapped for a mobile app later with minimal changes.
 
 ## Current step
 
-**Step 2 complete. Begin Step 3.**
+**Step 3 complete. Begin Step 4.**
 
-Step 3 goal: Build the Cloudflare R2 client — upload a PDF by URL, store in
-the trading-pdfs bucket, return the R2 URL. Requires R2_ACCOUNT_ID,
-R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_PUBLIC_URL in .env.
+Step 4 goal: Build the Claude API wrapper (brain/claude_api.py), the context
+builder (brain/context_builder.py), and the checkpoint read/write layer
+(brain/checkpoints.py). No external prerequisites — ANTHROPIC_API_KEY is
+already set.
 
 ---
 
