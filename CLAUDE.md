@@ -24,7 +24,7 @@ designed so Slack can be swapped for a mobile app later with minimal changes.
 - [x] Step 2 — MoneyFlows client
 - [x] Step 3 — R2 client
 - [x] Step 4 — Claude API wrapper + context builder
-- [ ] Step 5 — Database layer
+- [x] Step 5 — Database layer
 - [ ] Step 6 — Outlier 50 module end to end (command line)
 - [ ] Step 7 — Slack client + formatter
 - [ ] Step 8 — Slack bot (listen + respond)
@@ -38,11 +38,11 @@ designed so Slack can be swapped for a mobile app later with minimal changes.
 
 ## Current step
 
-**Step 4 complete. Begin Step 5.**
+**Step 5 complete. Begin Step 6.**
 
-Step 5 goal: Build the database CRUD layer — storage/positions.py,
-storage/watchlist.py, storage/analyses.py, storage/pdf_store.py.
-No external prerequisites.
+Step 6 goal: Build the Outlier 50 module end to end — fetch latest report,
+upload to R2, run Claude analysis, write checkpoint, update watchlist and
+TRADING_BRAIN.md, store in DB. Run from command line and verify full output.
 
 ---
 

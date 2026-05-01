@@ -71,7 +71,9 @@ def get_connection() -> sqlite3.Connection:
     db_dir = os.path.dirname(settings.DATABASE_URL)
     if db_dir:
         os.makedirs(db_dir, exist_ok=True)
-    return sqlite3.connect(settings.DATABASE_URL)
+    conn = sqlite3.connect(settings.DATABASE_URL)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
 def init_db():
