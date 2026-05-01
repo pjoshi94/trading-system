@@ -23,7 +23,7 @@ designed so Slack can be swapped for a mobile app later with minimal changes.
 - [x] Step 1 — Project scaffold
 - [x] Step 2 — MoneyFlows client
 - [x] Step 3 — R2 client
-- [ ] Step 4 — Claude API wrapper + context builder
+- [x] Step 4 — Claude API wrapper + context builder
 - [ ] Step 5 — Database layer
 - [ ] Step 6 — Outlier 50 module end to end (command line)
 - [ ] Step 7 — Slack client + formatter
@@ -38,12 +38,11 @@ designed so Slack can be swapped for a mobile app later with minimal changes.
 
 ## Current step
 
-**Step 3 complete. Begin Step 4.**
+**Step 4 complete. Begin Step 5.**
 
-Step 4 goal: Build the Claude API wrapper (brain/claude_api.py), the context
-builder (brain/context_builder.py), and the checkpoint read/write layer
-(brain/checkpoints.py). No external prerequisites — ANTHROPIC_API_KEY is
-already set.
+Step 5 goal: Build the database CRUD layer — storage/positions.py,
+storage/watchlist.py, storage/analyses.py, storage/pdf_store.py.
+No external prerequisites.
 
 ---
 
