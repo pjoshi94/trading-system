@@ -25,7 +25,7 @@ designed so Slack can be swapped for a mobile app later with minimal changes.
 - [x] Step 3 — R2 client
 - [x] Step 4 — Claude API wrapper + context builder
 - [x] Step 5 — Database layer
-- [ ] Step 6 — Outlier 50 module end to end (command line)
+- [x] Step 6 — Outlier 50 module end to end (command line)
 - [ ] Step 7 — Slack client + formatter
 - [ ] Step 8 — Slack bot (listen + respond)
 - [ ] Step 9 — Weekly Flows module
@@ -38,11 +38,11 @@ designed so Slack can be swapped for a mobile app later with minimal changes.
 
 ## Current step
 
-**Step 5 complete. Begin Step 6.**
+**Step 6 complete. Begin Step 7.**
 
-Step 6 goal: Build the Outlier 50 module end to end — fetch latest report,
-upload to R2, run Claude analysis, write checkpoint, update watchlist and
-TRADING_BRAIN.md, store in DB. Run from command line and verify full output.
+Step 7 goal: Build the Slack client (clients/slack_client.py) and formatter
+(slack/formatter.py). Requires SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET,
+SLACK_CHANNEL_ID, and SLACK_ALERTS_CHANNEL_ID in .env.
 
 ---
 
