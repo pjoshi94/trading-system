@@ -27,7 +27,7 @@ designed so Slack can be swapped for a mobile app later with minimal changes.
 - [x] Step 5 — Database layer
 - [x] Step 6 — Outlier 50 module end to end (command line)
 - [x] Step 7 — Slack client + formatter
-- [ ] Step 8 — Slack bot (listen + respond)
+- [x] Step 8 — Slack bot (listen + respond)
 - [ ] Step 9 — Weekly Flows module
 - [ ] Step 10 — Nightly check module
 - [ ] Step 11 — Quiver Quant client + stock deep dive module
@@ -38,11 +38,11 @@ designed so Slack can be swapped for a mobile app later with minimal changes.
 
 ## Current step
 
-**Step 7 complete. Begin Step 8.**
+**Step 8 complete. Begin Step 9.**
 
-Step 8 goal: Build the Slack bot — listen for messages, route commands to
-modules, handle Q&A from brain context. Requires the app to be running with
-a public URL for the Slack Events API (use ngrok for local testing).
+Step 9 goal: Build the Weekly Flows module — same pipeline as Outlier 50 but
+for weekly-flows endpoint. Updates WEEKLY_CHECKPOINT.md, MARKET_CONDITIONS.md,
+BMI history, and TRADING_BRAIN.md. No external prerequisites.
 
 ---
 
