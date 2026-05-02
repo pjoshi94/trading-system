@@ -26,7 +26,7 @@ designed so Slack can be swapped for a mobile app later with minimal changes.
 - [x] Step 4 — Claude API wrapper + context builder
 - [x] Step 5 — Database layer
 - [x] Step 6 — Outlier 50 module end to end (command line)
-- [ ] Step 7 — Slack client + formatter
+- [x] Step 7 — Slack client + formatter
 - [ ] Step 8 — Slack bot (listen + respond)
 - [ ] Step 9 — Weekly Flows module
 - [ ] Step 10 — Nightly check module
@@ -38,11 +38,11 @@ designed so Slack can be swapped for a mobile app later with minimal changes.
 
 ## Current step
 
-**Step 6 complete. Begin Step 7.**
+**Step 7 complete. Begin Step 8.**
 
-Step 7 goal: Build the Slack client (clients/slack_client.py) and formatter
-(slack/formatter.py). Requires SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET,
-SLACK_CHANNEL_ID, and SLACK_ALERTS_CHANNEL_ID in .env.
+Step 8 goal: Build the Slack bot — listen for messages, route commands to
+modules, handle Q&A from brain context. Requires the app to be running with
+a public URL for the Slack Events API (use ngrok for local testing).
 
 ---
 

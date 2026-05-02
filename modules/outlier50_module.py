@@ -180,13 +180,27 @@ def run() -> dict:
         full_output=json.dumps(result),
     )
 
-    print("[7/7] Refreshing TRADING_BRAIN.md...")
+    print("[7/8] Refreshing TRADING_BRAIN.md...")
     _refresh_trading_brain(report_date)
+
+    print("[8/8] Posting to Slack...")
+    from clients.slack_client import send_to_main
+    from slack.formatter import format_report
+    from storage.analyses import update_slack_ts
+
+    slack_report = result.get("slack_report", "")
+    blocks = format_report(slack_report, header=f"Outlier 50 — {report_date}")
+    ts = send_to_main(text=f"Outlier 50 analysis — {report_date}", blocks=blocks)
+    update_slack_ts(
+        analyses.get_latest_analysis("outlier50")["id"],
+        ts,
+    )
+    print(f"       posted (ts={ts})")
 
     print("\n" + "=" * 64)
     print("OUTLIER 50 ANALYSIS — " + report_date)
     print("=" * 64)
-    print(result.get("slack_report", ""))
+    print(slack_report)
     print("=" * 64)
 
     return result
