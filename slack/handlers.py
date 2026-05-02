@@ -35,7 +35,12 @@ def route(text: str, say, thread_ts: str = None):
             say(f"Weekly Flows failed: {e}", **kwargs)
 
     elif clean == "daily":
-        say("Running nightly check — coming in Step 10.", **kwargs)
+        say("Running nightly check — this takes ~60 seconds...", **kwargs)
+        try:
+            from modules.daily_module import run
+            run()
+        except Exception as e:
+            say(f"Nightly check failed: {e}", **kwargs)
 
     elif re.match(r"^analyze [a-z]+$", clean):
         ticker = clean.split(" ", 1)[1].upper()

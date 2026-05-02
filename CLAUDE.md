@@ -29,7 +29,7 @@ designed so Slack can be swapped for a mobile app later with minimal changes.
 - [x] Step 7 — Slack client + formatter
 - [x] Step 8 — Slack bot (listen + respond)
 - [x] Step 9 — Weekly Flows module
-- [ ] Step 10 — Nightly check module
+- [x] Step 10 — Nightly check module
 - [ ] Step 11 — Quiver Quant client + stock deep dive module
 - [ ] Step 12 — Scheduler
 - [ ] Step 13 — Deploy to Railway/Render
@@ -38,12 +38,10 @@ designed so Slack can be swapped for a mobile app later with minimal changes.
 
 ## Current step
 
-**Step 9 complete. Begin Step 10.**
+**Step 10 complete. Begin Step 11.**
 
-Step 10 goal: Build the nightly check module — web search price moves for
-positions and watchlist, macro news, run daily check prompt, append to
-MARKET_CONDITIONS.md, post to Slack. Alert thresholds: position >5% move
-or stop loss within 2% → also post to #trading-alerts.
+Step 11 goal: Build the Quiver Quant client and stock deep dive module.
+Requires QUIVERQUANT_API_KEY in .env.
 
 ---
 
