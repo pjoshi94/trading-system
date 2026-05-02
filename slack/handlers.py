@@ -44,7 +44,12 @@ def route(text: str, say, thread_ts: str = None):
 
     elif re.match(r"^analyze [a-z]+$", clean):
         ticker = clean.split(" ", 1)[1].upper()
-        say(f"Stock deep dive on *{ticker}* — coming in Step 11.", **kwargs)
+        say(f"Running deep dive on *{ticker}* — this takes ~60 seconds...", **kwargs)
+        try:
+            from modules.stock_module import run
+            run(ticker)
+        except Exception as e:
+            say(f"Deep dive failed: {e}", **kwargs)
 
     elif clean == "positions":
         rows = pos_store.get_open_positions()

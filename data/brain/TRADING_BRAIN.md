@@ -22,7 +22,7 @@ Last updated: 2026-05-01
 
 ## Current BMI
 
-Unknown — awaiting first Weekly Flows analysis.
+64.9% (as of 2026-04-26)
 
 ## Market Bias
 

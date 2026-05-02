@@ -30,7 +30,7 @@ designed so Slack can be swapped for a mobile app later with minimal changes.
 - [x] Step 8 — Slack bot (listen + respond)
 - [x] Step 9 — Weekly Flows module
 - [x] Step 10 — Nightly check module
-- [ ] Step 11 — Quiver Quant client + stock deep dive module
+- [x] Step 11 — Quiver Quant client + stock deep dive module
 - [ ] Step 12 — Scheduler
 - [ ] Step 13 — Deploy to Railway/Render
 
@@ -38,10 +38,12 @@ designed so Slack can be swapped for a mobile app later with minimal changes.
 
 ## Current step
 
-**Step 10 complete. Begin Step 11.**
+**Step 11 complete. Begin Step 12.**
 
-Step 11 goal: Build the Quiver Quant client and stock deep dive module.
-Requires QUIVERQUANT_API_KEY in .env.
+Step 12 goal: Build the APScheduler cron jobs in scheduler/jobs.py.
+Schedule: Outlier 50 on the 15th at 7 AM MT, Weekly Flows every Saturday 9 AM MT,
+Nightly check weekdays 9:30 PM MT. Wire into main.py so the scheduler starts
+alongside the Slack bot.
 
 ---
 
@@ -70,6 +72,116 @@ None yet.
 - MoneyFlows API is behind Cloudflare bot protection — all requests must include a
   browser-like User-Agent plus Origin/Referer headers. Bare requests return 403.
   Current working UA: Chrome 131 on macOS.
+
+---
+
+## API capabilities reference
+
+This section is the authoritative record of every external API the system uses.
+Read it before writing any code that touches an external service.
+Do not re-probe or re-discover — update this section when something changes.
+
+---
+
+### MoneyFlows
+**Client:** `clients/moneyflows.py` — `MoneyFlowsClient`
+**Auth:** POST JWT, Bearer token on all requests. Token expires ~14 days (check `exp` in JWT payload). Re-auth if expired or within 5 min of expiry. All requests need browser UA + Origin/Referer headers or Cloudflare returns 403.
+**Base URL:** `https://moneyflows.com`
+
+| Endpoint | Method | What it returns |
+|---|---|---|
+| `/wp-json/wp/v2/?rest_route=/jwt/v1/auth` | POST | JWT token in `data.jwt` |
+| `/wp-json/wp/v2/outlier-50/?per_page=1&page=1` | GET | Latest Outlier 50 post. PDF URL in `content.rendered` |
+| `/wp-json/wp/v2/weekly-flows/?per_page=1&page=1` | GET | Latest Weekly Flows post. PDF URL in `content.rendered` |
+
+**PDF extraction:** Parse `href` from the `wp-block-file` anchor tag in `content.rendered`.
+
+---
+
+### Quiver Quant
+**Client:** `clients/quiverquant.py` — use `get_all(ticker)` which returns all datasets in one dict.
+**Plan:** Hobbyist ($30/mo) — public + tier 1.
+**Base URL:** `https://api.quiverquant.com/beta`
+
+**CRITICAL — Two different auth headers depending on endpoint type:**
+- Bulk live feeds (no ticker): `x-api-key: KEY`
+- Historical per-ticker endpoints: `Authorization: Token KEY`
+  Using `x-api-key` on historical endpoints returns 401 even with a valid key.
+
+**Per-ticker historical endpoints — all use `Authorization: Token KEY`:**
+
+| Endpoint | Used in get_all() | What it returns | Key fields |
+|---|---|---|---|
+| `GET /historical/congresstrading/{ticker}` | ✓ as `congress_trades` | Combined House + Senate, richest signal data | Representative, House (chamber), Party, TransactionDate, Transaction, Range, Amount, ExcessReturn, PriceChange, SPYChange |
+| `GET /historical/housetrading/{ticker}` | — | House trades only | Representative, Date, Transaction, Range, BioGuideID |
+| `GET /historical/senatetrading/{ticker}` | — | Senate trades only | Senator, Date, Transaction, Range, BioGuideID |
+| `GET /historical/govcontractsall/{ticker}` | ✓ as `gov_contracts_all` | Detailed gov contracts with agency/description | Date, Agency, Amount, Description |
+| `GET /historical/govcontracts/{ticker}` | — | Quarterly gov contract totals only | Ticker, Amount, Qtr, Year |
+| `GET /historical/lobbying/{ticker}` | ✓ as `lobbying` | Lobbying spend | Date, Amount, Issue, Specific_Issue, Registrant |
+| `GET /historical/offexchange/{ticker}` | ✓ as `offexchange` | Dark pool / off-exchange short volume | Date, OTC_Short, OTC_Total, DPI |
+| `GET /historical/corporatedonors/{ticker}` | ✓ as `corporate_donors` | Company PAC political donations | CandidateName, CompanyCMTENM, TransactionDate, TransactionAmount, CommitteeName, Cycle |
+
+**Bulk live feeds — no ticker filter (use for signal discovery / scanning all stocks):**
+
+| Endpoint | Auth header | What it returns | Key fields |
+|---|---|---|---|
+| `GET /live/congresstrading` | x-api-key | All recent House+Senate trades | Representative, Ticker, TransactionDate, Transaction, Range, ExcessReturn |
+| `GET /live/housetrading` | Authorization: Token | All recent House trades | Representative, Date, Ticker, Transaction, Range, Amount |
+| `GET /live/senatetrading` | x-api-key | All recent Senate trades | Senator, Date, Ticker, Transaction, Range, Amount |
+| `GET /live/govcontracts` | x-api-key | All recent quarterly gov contracts | Ticker, Amount, Qtr, Year |
+| `GET /live/govcontractsall` | Authorization: Token | All recent detailed gov contracts | Date, Agency, Amount, Description, Ticker |
+| `GET /live/lobbying` | x-api-key | All recent lobbying | Date, Amount, Client, Issue, Registrant, Ticker |
+| `GET /live/offexchange` | Authorization: Token | All recent off-exchange short volume | Date, OTC_Short, OTC_Total, DPI, Ticker |
+
+**Notes:**
+- Prefer `/historical/congresstrading/{ticker}` over separate house/senate — includes ExcessReturn (signal quality)
+- `corporatedonors` response wraps in `{"data": [...]}` — client unwraps automatically
+- Bulk feeds return 5,000–20,000 rows across all stocks — filter by Ticker after fetching
+
+**Tier 2+ only (return 403):** topshareholders, insiders, sec13f, sec13fchanges, etfholdings, quivernews, patentdrift, patentmomentum, appratings, executivecompensation, allpatents.
+**Return 404 (wrong path):** /live/{ticker} variants, /recent/ prefix, executivecomp (singular), patent (singular).
+
+---
+
+### Anthropic Claude API
+**Client:** `brain/claude_api.py`
+**Auth:** `ANTHROPIC_API_KEY` — handled by the `anthropic` SDK automatically.
+**Model:** `claude-sonnet-4-5` (default). Change via `model=` param.
+**Functions:**
+- `call(system, user)` — plain text prompt, retries once on APIError
+- `call_with_pdf(system, user, pdf_bytes)` — attaches PDF as base64 document content block
+
+**Web search:** Claude has built-in web search. Call `claude_api.call()` and instruct it to "search the web" in the prompt — it will use its search tool automatically. Used in daily check and stock deep dive for price data, news, and analyst info.
+
+---
+
+### Cloudflare R2
+**Client:** `clients/r2_client.py`
+**Auth:** boto3 S3-compatible with `R2_ACCESS_KEY_ID` + `R2_SECRET_ACCESS_KEY`. Endpoint: `https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
+**Bucket:** `trading-pdfs`
+**Functions:**
+- `upload_from_url(source_url, filename)` — downloads from URL, uploads to R2, returns public URL
+- `get_url(filename)` — returns `{R2_PUBLIC_URL}/{filename}`
+- `file_exists(filename)` — head_object check
+
+**Naming convention:** `outlier50_YYYY_MM.pdf` | `weekly_flows_YYYY_MM_DD.pdf`
+
+---
+
+### Slack
+**Client:** `clients/slack_client.py` — uses `slack_sdk` WebClient
+**Bot framework:** `slack/bot.py` — `slack_bolt` App + Flask adapter at `/slack/events`
+**Auth:** `SLACK_BOT_TOKEN` (Bearer). Signature verification via `SLACK_SIGNING_SECRET`.
+**Bot name:** @super-trader
+
+| Function | What it does |
+|---|---|
+| `send_to_main(text, blocks)` | Post to `#trading-main` (SLACK_CHANNEL_ID) |
+| `send_to_alerts(text, blocks)` | Post to `#trading-alerts` (SLACK_ALERTS_CHANNEL_ID) |
+| `send_reply(channel_id, thread_ts, text, blocks)` | Reply in a thread |
+| `verify_token()` | Call auth.test, returns bot info dict |
+
+**Formatter:** `slack/formatter.py` — `format_report(text, header)` splits text into ≤2900-char section blocks (Slack limit is 3000).
 
 ---
 
