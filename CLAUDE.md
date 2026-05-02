@@ -32,13 +32,17 @@ designed so Slack can be swapped for a mobile app later with minimal changes.
 - [x] Step 10 — Nightly check module
 - [x] Step 11 — Quiver Quant client + stock deep dive module
 - [ ] Step 12 — Scheduler
-- [ ] Step 13 — Deploy to Railway/Render
+- [x] Step 13 — Deploy to Railway/Render
 
 ---
 
 ## Current step
 
-**Step 12 complete. Begin Step 13.**
+**All steps complete. System is live.**
+
+Deployed at: https://web-production-9f2af.up.railway.app
+Slack Events URL: https://web-production-9f2af.up.railway.app/slack/events
+DB persists via Railway Volume mounted at /data
 
 Schedule (all Pacific Time, America/Los_Angeles):
 - Outlier 50: 15th of each month at 10:00 AM PST
