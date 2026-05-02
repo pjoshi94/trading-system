@@ -27,7 +27,12 @@ def route(text: str, say, thread_ts: str = None):
             say(f"Outlier 50 failed: {e}", **kwargs)
 
     elif clean == "weekly":
-        say("Running Weekly Flows analysis — coming in Step 9.", **kwargs)
+        say("Running Weekly Flows analysis — this takes ~60 seconds...", **kwargs)
+        try:
+            from modules.weekly_module import run
+            run()
+        except Exception as e:
+            say(f"Weekly Flows failed: {e}", **kwargs)
 
     elif clean == "daily":
         say("Running nightly check — coming in Step 10.", **kwargs)

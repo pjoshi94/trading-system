@@ -28,7 +28,7 @@ designed so Slack can be swapped for a mobile app later with minimal changes.
 - [x] Step 6 — Outlier 50 module end to end (command line)
 - [x] Step 7 — Slack client + formatter
 - [x] Step 8 — Slack bot (listen + respond)
-- [ ] Step 9 — Weekly Flows module
+- [x] Step 9 — Weekly Flows module
 - [ ] Step 10 — Nightly check module
 - [ ] Step 11 — Quiver Quant client + stock deep dive module
 - [ ] Step 12 — Scheduler
@@ -38,11 +38,12 @@ designed so Slack can be swapped for a mobile app later with minimal changes.
 
 ## Current step
 
-**Step 8 complete. Begin Step 9.**
+**Step 9 complete. Begin Step 10.**
 
-Step 9 goal: Build the Weekly Flows module — same pipeline as Outlier 50 but
-for weekly-flows endpoint. Updates WEEKLY_CHECKPOINT.md, MARKET_CONDITIONS.md,
-BMI history, and TRADING_BRAIN.md. No external prerequisites.
+Step 10 goal: Build the nightly check module — web search price moves for
+positions and watchlist, macro news, run daily check prompt, append to
+MARKET_CONDITIONS.md, post to Slack. Alert thresholds: position >5% move
+or stop loss within 2% → also post to #trading-alerts.
 
 ---
 
