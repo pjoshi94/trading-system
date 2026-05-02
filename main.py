@@ -20,7 +20,16 @@ def main():
     print(f"  Database ready: {settings.DATABASE_URL}")
     print()
 
-    print("[3/3] Starting Slack bot...")
+    print("[3/4] Starting scheduler...")
+    from scheduler.jobs import build_scheduler
+    scheduler = build_scheduler()
+    scheduler.start()
+    jobs = scheduler.get_jobs()
+    for job in jobs:
+        print(f"  {job.name}: next run {job.next_run_time}")
+    print()
+
+    print("[4/4] Starting Slack bot...")
     from slack.bot import start
     start()
 
