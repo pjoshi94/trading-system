@@ -42,4 +42,9 @@ def handle_message(event, say):
 
 def start():
     port = int(os.getenv("PORT", 3000))
-    flask_app.run(host="0.0.0.0", port=port)
+    if os.getenv("ENVIRONMENT") == "production":
+        from waitress import serve
+        print(f"  Serving on port {port} (waitress)")
+        serve(flask_app, host="0.0.0.0", port=port, threads=4)
+    else:
+        flask_app.run(host="0.0.0.0", port=port)
