@@ -1,6 +1,8 @@
 import os
 
-BRAIN_DIR = "data/brain"
+# On Railway: set BRAIN_DIR=/data/brain so brain files live on the persistent volume.
+# Locally defaults to data/brain (relative to project root).
+BRAIN_DIR = os.getenv("BRAIN_DIR", "data/brain")
 
 
 def read_brain_file(filename: str) -> str:
