@@ -38,12 +38,12 @@ designed so Slack can be swapped for a mobile app later with minimal changes.
 
 ## Current step
 
-**Step 11 complete. Begin Step 12.**
+**Step 12 complete. Begin Step 13.**
 
-Step 12 goal: Build the APScheduler cron jobs in scheduler/jobs.py.
-Schedule: Outlier 50 on the 15th at 7 AM MT, Weekly Flows every Saturday 9 AM MT,
-Nightly check weekdays 9:30 PM MT. Wire into main.py so the scheduler starts
-alongside the Slack bot.
+Schedule (all Pacific Time, America/Los_Angeles):
+- Outlier 50: 15th of each month at 10:00 AM PST
+- Weekly Flows: every Sunday at 6:00 PM PST
+- Nightly check: every day at 8:00 PM PST
 
 ---
 

@@ -5,8 +5,8 @@ from apscheduler.triggers.cron import CronTrigger
 
 logger = logging.getLogger(__name__)
 
-# All times are Mountain Time (America/Denver observes MDT/MST automatically)
-_TZ = "America/Denver"
+# All times are Pacific Time (America/Los_Angeles observes PDT/PST automatically)
+_TZ = "America/Los_Angeles"
 
 
 def _run_outlier50():
@@ -51,28 +51,28 @@ def _run_nightly():
 def build_scheduler() -> BackgroundScheduler:
     scheduler = BackgroundScheduler(timezone=_TZ)
 
-    # Outlier 50 — 15th of each month at 7:00 AM MT
+    # Outlier 50 — 15th of each month at 10:00 AM PST
     scheduler.add_job(
         _run_outlier50,
-        CronTrigger(day=15, hour=7, minute=0, timezone=_TZ),
+        CronTrigger(day=15, hour=10, minute=0, timezone=_TZ),
         id="outlier50",
         name="outlier50",
         replace_existing=True,
     )
 
-    # Weekly Flows — every Saturday at 9:00 AM MT
+    # Weekly Flows — every Sunday at 6:00 PM PST
     scheduler.add_job(
         _run_weekly,
-        CronTrigger(day_of_week="sat", hour=9, minute=0, timezone=_TZ),
+        CronTrigger(day_of_week="sun", hour=18, minute=0, timezone=_TZ),
         id="weekly_flows",
         name="weekly_flows",
         replace_existing=True,
     )
 
-    # Nightly check — weekdays (Mon–Fri) at 9:30 PM MT
+    # Nightly check — every day at 8:00 PM PST
     scheduler.add_job(
         _run_nightly,
-        CronTrigger(day_of_week="mon-fri", hour=21, minute=30, timezone=_TZ),
+        CronTrigger(hour=20, minute=0, timezone=_TZ),
         id="nightly_check",
         name="nightly_check",
         replace_existing=True,
