@@ -173,7 +173,7 @@ def run() -> dict:
     if result.get("bmi") is not None:
         analyses.store_bmi(report_date, float(result["bmi"]))
 
-    analyses.store_analysis(
+    analysis_id = analyses.store_analysis(
         type="outlier50",
         report_date=report_date,
         summary=result.get("summary", ""),
@@ -191,10 +191,7 @@ def run() -> dict:
     slack_report = result.get("slack_report", "")
     blocks = format_report(slack_report, header=f"Outlier 50 — {report_date}")
     ts = send_to_main(text=f"Outlier 50 analysis — {report_date}", blocks=blocks)
-    update_slack_ts(
-        analyses.get_latest_analysis("outlier50")["id"],
-        ts,
-    )
+    update_slack_ts(analysis_id, ts)
     print(f"       posted (ts={ts})")
 
     print("\n" + "=" * 64)

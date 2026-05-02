@@ -7,7 +7,7 @@ def main():
     print("Trading Intelligence System — startup")
     print()
 
-    print("[1/3] Validating environment...")
+    print("[1/4] Validating environment...")
     try:
         settings.validate()
     except EnvironmentError as e:
@@ -15,7 +15,7 @@ def main():
         sys.exit(1)
     print()
 
-    print("[2/3] Initializing database...")
+    print("[2/4] Initializing database...")
     init_db()
     print(f"  Database ready: {settings.DATABASE_URL}")
     print()

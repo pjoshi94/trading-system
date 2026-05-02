@@ -23,5 +23,6 @@ def write_brain_file(filename: str, content: str):
 
 def append_to_brain_file(filename: str, content: str):
     path = os.path.join(BRAIN_DIR, filename)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "a") as f:
         f.write("\n\n" + content)

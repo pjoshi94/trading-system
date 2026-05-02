@@ -109,7 +109,7 @@ def run() -> dict:
     if result.get("significant") and result.get("market_conditions_entry"):
         append_to_brain_file("MARKET_CONDITIONS.md", result["market_conditions_entry"])
 
-    analyses.store_analysis(
+    analysis_id = analyses.store_analysis(
         type="daily_check",
         report_date=today,
         summary=result.get("summary", ""),
@@ -124,10 +124,7 @@ def run() -> dict:
     slack_report = result.get("slack_report", "")
     blocks = format_report(slack_report, header=f"Nightly Check — {today}")
     ts = send_to_main(text=f"Nightly check — {today}", blocks=blocks)
-    update_slack_ts(
-        analyses.get_latest_analysis("daily_check")["id"],
-        ts,
-    )
+    update_slack_ts(analysis_id, ts)
     print(f"       posted (ts={ts})")
 
     # Post alerts to #trading-alerts if any
