@@ -97,7 +97,10 @@ def _apply_watchlist_updates(updates: list, report_date: str) -> list[str]:
 
 
 def _refresh_trading_brain(report_date: str):
+    from storage import positions as pos_store
+
     items = watchlist_store.get_watchlist()
+    positions = pos_store.get_open_positions()
     latest_bmi = analyses.get_latest_bmi()
 
     bmi_line = (
@@ -105,6 +108,23 @@ def _refresh_trading_brain(report_date: str):
         if latest_bmi
         else "Unknown — awaiting first Weekly Flows analysis."
     )
+
+    if positions:
+        pos_rows = [
+            "| Ticker | Shares | Entry | Date | Stop | Target |",
+            "|--------|--------|-------|------|------|--------|",
+        ]
+        for p in positions:
+            target_low = round(p["entry_price"] * 1.20, 2)
+            target_high = round(p["entry_price"] * 1.25, 2)
+            pos_rows.append(
+                f"| {p['ticker']} | {p['shares']} | ${p['entry_price']:.2f} | "
+                f"{p['entry_date']} | ${p['stop_loss']:.2f} | "
+                f"${target_low:.2f}–${target_high:.2f} |"
+            )
+        positions_section = "\n".join(pos_rows)
+    else:
+        positions_section = "No open positions."
 
     if items:
         rows = ["| Ticker | Rank | Conviction | Sector | Notes |",
@@ -127,7 +147,7 @@ Last updated: {date.today().isoformat()}
 
 ## Open Positions
 
-[Manage manually — update this section when entering or exiting trades.]
+{positions_section}
 
 ## Watchlist
 

@@ -76,6 +76,14 @@ class MoneyFlowsClient:
     def get_latest_outlier50(self) -> dict:
         return self._get(settings.MONEYFLOWS_OUTLIER50_ENDPOINT)[0]
 
+    def get_outlier50_by_page(self, page: int) -> dict | None:
+        endpoint = f"/wp-json/wp/v2/outlier-50/?per_page=1&page={page}"
+        try:
+            results = self._get(endpoint)
+            return results[0] if results else None
+        except Exception:
+            return None
+
     def get_latest_weekly_flows(self) -> dict:
         return self._get(settings.MONEYFLOWS_WEEKLY_ENDPOINT)[0]
 

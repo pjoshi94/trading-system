@@ -84,10 +84,10 @@ def update_earnings_dates(
 
 
 def get_entry_window_ready(today: str) -> list[dict]:
-    """Return watchlist entries where entry_window_opens = today AND deep_dive_queued = 1."""
+    """Return watchlist entries whose entry window has opened (on or before today) and haven't been analyzed yet."""
     with get_connection() as conn:
         rows = conn.execute(
-            "SELECT * FROM watchlist WHERE entry_window_opens = ? AND deep_dive_queued = 1 AND status = 'watching'",
+            "SELECT * FROM watchlist WHERE entry_window_opens <= ? AND entry_window_opens IS NOT NULL AND deep_dive_queued = 1 AND status = 'watching'",
             (today,),
         ).fetchall()
         return [dict(r) for r in rows]
