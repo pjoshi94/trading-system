@@ -8,6 +8,17 @@ from storage import analyses
 from storage import positions as pos_store
 from storage import watchlist as wl_store
 
+_BUY_SELL_RE = re.compile(
+    r"\b(bought|i bought|just bought|picked up|entered|got filled on|"
+    r"sold|i sold|just sold|exited|closed my|closed out)\b",
+    re.IGNORECASE,
+)
+# Stop update: action word + "stop" + dollar price all in same message
+_STOP_UPDATE_RE = re.compile(
+    r"\b(update|raise|move|set|tighten)\b.{0,40}\bstop\b.*\$\d",
+    re.IGNORECASE,
+)
+
 
 def _clean(text: str) -> str:
     return re.sub(r"<@[A-Z0-9]+>", "", text).strip()
@@ -103,6 +114,9 @@ def route(text: str, say, thread_ts: str = None):
 
     elif clean == "help":
         say(_help_text(), **kwargs)
+
+    elif _is_position_command(_clean(text)):
+        _handle_position_command(_clean(text), say, kwargs)
 
     else:
         _answer_question(_clean(text), say, thread_ts)
@@ -318,6 +332,28 @@ def _handle_earnings_set(ticker: str, earnings_date: str, say, kwargs: dict):
         say(f"Failed to set earnings for {ticker}: {e}", **kwargs)
 
 
+def _is_position_command(text: str) -> bool:
+    """True if the message looks like a buy/sell/stop-update action, not a question."""
+    if _STOP_UPDATE_RE.search(text):
+        return True
+    if not _BUY_SELL_RE.search(text):
+        return False
+    # Require a dollar price or a real ticker (2+ uppercase letters, not just "I")
+    has_price = bool(re.search(r"\$\d+", text))
+    has_ticker = bool(re.search(r"\b[A-Z]{2,5}\b", text))
+    return has_price or has_ticker
+
+
+def _handle_position_command(text: str, say, kwargs: dict):
+    say(":hourglass_flowing_sand: Parsing position command...", **kwargs)
+    try:
+        from modules.position_module import handle_position_command
+        reply = handle_position_command(text)
+        say(reply, **kwargs)
+    except Exception as e:
+        say(f":x: Position command failed: {e}", **kwargs)
+
+
 def _answer_question(question: str, say, thread_ts: str = None):
     kwargs = {"thread_ts": thread_ts} if thread_ts else {}
     try:
@@ -343,6 +379,11 @@ def _help_text() -> str:
         "• `@super-trader bmi` — BMI history (last 8 weeks)\n"
         "• `@super-trader brain` — Dump current trading brain\n"
         "• `@super-trader help` — This message\n\n"
+        "*Position tracking (natural language):*\n"
+        "• `I bought 43 shares of FTI at $73.25`\n"
+        "• `I sold FTI at $91.50`\n"
+        "• `Update my FTI stop to $69.00`\n"
+        "• `Correct my FTI entry — it was 40 shares not 43`\n\n"
         "*Thread keywords (reply in any analysis thread):*\n"
         "• `expand` or `deep dive` — Full stored analysis\n"
         "• `why TICKER` — Full analysis for a specific ticker\n\n"

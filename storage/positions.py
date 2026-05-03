@@ -57,3 +57,34 @@ def get_all_positions() -> list[dict]:
             "SELECT * FROM positions ORDER BY entry_date DESC"
         ).fetchall()
         return [dict(r) for r in rows]
+
+
+def get_open_position_by_ticker(ticker: str) -> dict | None:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM positions WHERE ticker = ? AND status = 'open' ORDER BY id DESC LIMIT 1",
+            (ticker.upper(),),
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def update_stop_loss(position_id: int, new_stop: float):
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE positions SET stop_loss = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (new_stop, position_id),
+        )
+
+
+def update_position(position_id: int, **kwargs):
+    allowed = {"shares", "entry_price", "stop_loss", "profit_target", "thesis"}
+    fields = {k: v for k, v in kwargs.items() if k in allowed}
+    if not fields:
+        return
+    set_clause = ", ".join(f"{k} = ?" for k in fields)
+    values = list(fields.values()) + [position_id]
+    with get_connection() as conn:
+        conn.execute(
+            f"UPDATE positions SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            values,
+        )
