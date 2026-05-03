@@ -92,30 +92,37 @@ def run() -> dict:
     print("       Done.")
 
     print("[6/8] Writing checkpoints...")
-    write_brain_file("WEEKLY_CHECKPOINT.md", result["weekly_checkpoint_update"])
-    append_to_brain_file("MARKET_CONDITIONS.md", result["market_conditions_entry"])
+    write_brain_file("WEEKLY_CHECKPOINT.md", result["checkpoint_update"])
+    append_to_brain_file("MARKET_CONDITIONS.md", result["market_conditions_append"])
 
     print("[7/8] Updating DB...")
-    bmi = result.get("bmi")
-    if bmi is not None:
-        analyses.store_bmi(report_date, float(bmi))
+    bmi_data = result.get("bmi") or {}
+    bmi_value = bmi_data.get("current") if isinstance(bmi_data, dict) else bmi_data
+    if bmi_value is not None:
+        analyses.store_bmi(report_date, float(bmi_value))
 
+    slack_summary = result.get("slack_summary", "")
     analysis_id = analyses.store_analysis(
         type="weekly_flows",
         report_date=report_date,
-        summary=result.get("summary", ""),
-        full_output=json.dumps(result),
+        summary=result.get("equity_flows_summary", ""),
+        slack_summary=slack_summary,
+        full_analysis=json.dumps(result),
     )
 
     _refresh_trading_brain_bmi(report_date)
+
+    # Post BMI alert to #trading-alerts if threshold triggered
+    if result.get("bmi_alert_required") and result.get("bmi_alert_message"):
+        from clients.slack_client import send_to_alerts
+        send_to_alerts(text=result["bmi_alert_message"])
 
     print("[8/8] Posting to Slack...")
     from clients.slack_client import send_to_main
     from slack.formatter import format_report
     from storage.analyses import update_slack_ts
 
-    slack_report = result.get("slack_report", "")
-    blocks = format_report(slack_report, header=f"Weekly Flows — {report_date}")
+    blocks = format_report(slack_summary, header=f"Weekly Flows — {report_date}")
     ts = send_to_main(text=f"Weekly Flows analysis — {report_date}", blocks=blocks)
     update_slack_ts(analysis_id, ts)
     print(f"       posted (ts={ts})")
@@ -123,7 +130,7 @@ def run() -> dict:
     print("\n" + "=" * 64)
     print("WEEKLY FLOWS ANALYSIS — " + report_date)
     print("=" * 64)
-    print(slack_report)
+    print(slack_summary)
     print("=" * 64)
 
     return result
