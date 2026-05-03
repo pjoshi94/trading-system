@@ -9,16 +9,20 @@ You don't open a dashboard. You don't run scripts. You ask questions in Slack an
 ## What it does
 
 **Monthly (15th, 10 AM PST)** — Outlier 50 analysis
-Fetches the latest MoneyFlows Outlier 50 PDF, extracts the signal list, and runs a full AI analysis against your trading framework. Updates the watchlist automatically. Posts results to Slack.
+Fetches the latest MoneyFlows Outlier 50 PDF, extracts the signal list, and runs a full AI analysis against your trading framework. Updates the watchlist automatically. Looks up earnings dates for every new ticker and computes entry block windows. Posts results to Slack.
 
 **Weekly (Sunday, 6 PM PST)** — Weekly Flows analysis
 Fetches the MoneyFlows Weekly Flows PDF, tracks sector rotation and BMI trajectory, and appends to a rolling market conditions log the system uses for context.
 
 **Daily (8 PM PST)** — Nightly check
-Searches the web for price moves on open positions and watchlist stocks. Flags stops within 2%, big moves, and macro events worth knowing about. Posts to Slack if anything matters.
+First checks if any watchlist ticker's entry window opened today — if so, fires a Tier 1 analysis automatically. Then searches the web for price moves on open positions and watchlist stocks. Flags stops within 2%, big moves, and macro events worth knowing about. Posts to Slack if anything matters.
 
-**On demand** — Stock deep dives
-Pull congressional trading data (House + Senate with excess return stats), government contracts, lobbying spend, off-exchange short volume, and corporate PAC activity for any ticker. Combines it with live news and analyst data from the web. Posts a full analysis to Slack.
+**Weekdays (7 PM PST)** — Earnings night notification
+Checks if any watchlist ticker has earnings tomorrow. If yes, posts to `#trading-alerts` with buttons to queue a deep dive or dismiss. The queued deep dive fires automatically on the morning after the entry window opens.
+
+**On demand** — Stock analysis (two tiers)
+- **Tier 1** (`@super-trader analyze TICKER`) — quick filter using live news and analyst data. Returns a verdict (enter / wait / skip) in under 30 seconds.
+- **Tier 2** (reply `deep dive` in the thread) — full Quiver Quant pull: congressional trades with excess return stats, government contracts, lobbying spend, off-exchange short volume, and corporate PAC activity. Runs once per ticker per thread.
 
 ---
 
@@ -40,18 +44,38 @@ These files are gitignored (your real trading data stays private). The `data/bra
 ## Slack commands
 
 ```
-@super-trader outlier50       Run Outlier 50 analysis now
-@super-trader weekly          Run Weekly Flows analysis now
-@super-trader daily           Run nightly check now
-@super-trader analyze TICKER  Full stock deep dive
-@super-trader positions       Show open positions
-@super-trader watchlist       Show current watchlist
-@super-trader bmi             BMI history (last 8 weeks)
-@super-trader brain           Dump current trading brain
-@super-trader help            Command list
+@super-trader outlier50                   Run Outlier 50 analysis now
+@super-trader weekly                      Run Weekly Flows analysis now
+@super-trader daily                       Run nightly check now
+@super-trader analyze TICKER              Tier 1 quick filter
+@super-trader watchlist add TICKER        Add ticker + auto earnings date lookup
+@super-trader earnings set TICKER DATE    Set earnings date manually (YYYY-MM-DD)
+@super-trader positions                   Show open positions
+@super-trader watchlist                   Show current watchlist
+@super-trader bmi                         BMI history (last 8 weeks)
+@super-trader brain                       Dump current trading brain
+@super-trader help                        Command list
+```
+
+**Thread keywords** (reply in any analysis thread, no bot mention needed):
+```
+deep dive    Run Tier 2 for this ticker (Quiver Quant — fires once per ticker)
+expand       Read the full stored analysis for this thread
+why TICKER   Read the latest stored analysis for a specific ticker
 ```
 
 Any other message is answered as a question from your trading brain context.
+
+---
+
+## Earnings date tracking
+
+When a ticker is added to the watchlist — either by the monthly Outlier 50 run or via `watchlist add` — the system automatically looks up the next earnings date using Claude web search. From that date it computes:
+
+- **Pre-earnings block starts** — 7 days before earnings. New entries are blocked in this window.
+- **Entry window opens** — 3 days after earnings. The reaction has settled; Tier 1 fires automatically if you queued a deep dive the night before.
+
+If the date can't be found or confidence is low, you get a `#trading-alerts` message asking you to set it manually.
 
 ---
 
@@ -73,7 +97,7 @@ Per-ticker endpoints used in deep dives:
 
 Bulk live feeds (all stocks, no ticker filter) are also implemented for future signal discovery use.
 
-**Claude API** — All analysis runs through Claude. Web search is used for live price data, news, and analyst ratings in the nightly check and stock deep dives.
+**Claude API** — All analysis runs through Claude. Web search is used for live price data, news, analyst ratings, and earnings date lookups.
 
 ---
 
@@ -133,8 +157,9 @@ Then fill in `brain/prompts/system_context.py` with your actual trading rules �
 1. Create a Slack app at [api.slack.com/apps](https://api.slack.com/apps)
 2. Add bot token scopes: `chat:write`, `channels:read`, `channels:history`
 3. Enable Event Subscriptions — point the request URL to `https://your-domain/slack/events`
-4. Subscribe to `app_mention` and `message.im` events
-5. Install the app to your workspace and invite it to your channels
+4. Enable Interactivity — point the request URL to `https://your-domain/slack/interactive`
+5. Subscribe to `app_mention` and `message.im` events
+6. Install the app to your workspace and invite it to your channels
 
 ### Deploy to Railway
 
@@ -146,8 +171,9 @@ Then fill in `brain/prompts/system_context.py` with your actual trading rules �
    DATABASE_URL=/data/trading.db
    BRAIN_DIR=/data/brain
    ENVIRONMENT=production
+   RAILWAY_URL=https://your-app.up.railway.app
    ```
-5. Update your Slack Event Subscriptions URL to the Railway domain
+5. Update your Slack Event Subscriptions and Interactivity URLs to the Railway domain
 
 ---
 
@@ -168,11 +194,13 @@ trading-system/
 │   ├── outlier50_module.py    # Monthly Outlier 50 pipeline
 │   ├── weekly_module.py       # Weekly Flows pipeline
 │   ├── daily_module.py        # Nightly check pipeline
-│   └── stock_module.py        # Stock deep dive pipeline
+│   ├── stock_module.py        # Tier 1 + Tier 2 stock analysis
+│   └── earnings_night.py      # Weekday earnings notification
 │
 ├── clients/
 │   ├── moneyflows.py          # MoneyFlows JWT auth + PDF fetching
 │   ├── quiverquant.py         # Quiver Quant API (8 per-ticker + 7 bulk endpoints)
+│   ├── earnings.py            # Earnings date lookup via Claude web search
 │   ├── r2_client.py           # Cloudflare R2 PDF storage
 │   └── slack_client.py        # Slack message sending
 │
