@@ -30,6 +30,7 @@ R2_PUBLIC_URL = os.getenv("R2_PUBLIC_URL")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 DATABASE_URL = os.getenv("DATABASE_URL", "data/trading.db")
+RAILWAY_URL = os.getenv("RAILWAY_URL")
 
 # MoneyFlows API constants
 MONEYFLOWS_BASE_URL = "https://moneyflows.com"
@@ -53,6 +54,7 @@ _OPTIONAL = {
     "R2_ACCESS_KEY_ID": R2_ACCESS_KEY_ID,
     "R2_SECRET_ACCESS_KEY": R2_SECRET_ACCESS_KEY,
     "R2_PUBLIC_URL": R2_PUBLIC_URL,
+    "RAILWAY_URL": RAILWAY_URL,
 }
 
 

@@ -17,6 +17,8 @@ def main():
 
     print("[2/4] Initializing database...")
     init_db()
+    from storage.db import run_migrations
+    run_migrations()
     print(f"  Database ready: {settings.DATABASE_URL}")
     print()
 

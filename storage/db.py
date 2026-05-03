@@ -81,3 +81,24 @@ def init_db():
     conn.executescript(_SCHEMA)
     conn.commit()
     conn.close()
+
+
+def run_migrations():
+    """Add new columns to existing tables. Safe to run multiple times."""
+    migrations = [
+        "ALTER TABLE watchlist ADD COLUMN pre_earnings_block_starts TEXT",
+        "ALTER TABLE watchlist ADD COLUMN entry_window_opens TEXT",
+        "ALTER TABLE watchlist ADD COLUMN earnings_confidence TEXT",
+        "ALTER TABLE watchlist ADD COLUMN deep_dive_queued INTEGER DEFAULT 0",
+        "ALTER TABLE analyses ADD COLUMN slack_summary TEXT",
+        "ALTER TABLE analyses ADD COLUMN full_analysis TEXT",
+    ]
+    conn = get_connection()
+    for sql in migrations:
+        try:
+            conn.execute(sql)
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+    conn.commit()
+    conn.close()
+    print("  Migrations: OK")

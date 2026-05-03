@@ -76,10 +76,43 @@ def _post_alerts(alerts: list, report_date: str):
     print(f"       {len(alerts)} alert(s) posted to #trading-alerts")
 
 
+def _run_auto_tier1(today: str):
+    """Fire Tier 1 on any watchlist entry whose entry_window_opens = today."""
+    ready = wl_store.get_entry_window_ready(today)
+    if not ready:
+        return
+    print(f"       Auto Tier 1 for {len(ready)} ticker(s): {[r['ticker'] for r in ready]}")
+    from modules.stock_module import run_tier1
+    from clients.slack_client import send_to_main
+    from slack.formatter import format_report
+    from storage.analyses import update_slack_ts
+
+    for item in ready:
+        ticker = item["ticker"]
+        try:
+            result = run_tier1(ticker)
+            blocks = format_report(
+                result["slack_summary"],
+                header=f"Auto Tier 1: {ticker} — entry window now open",
+            )
+            ts = send_to_main(
+                text=f"Entry window open for {ticker} — auto Tier 1 complete. Reply `deep dive` for full analysis.",
+                blocks=blocks,
+            )
+            if result["analysis_id"]:
+                update_slack_ts(result["analysis_id"], ts)
+            wl_store.update_watchlist_item(ticker, deep_dive_queued=0)
+        except Exception as e:
+            print(f"       Auto Tier 1 for {ticker} failed: {e}")
+
+
 def run() -> dict:
     """Run the nightly check module. Returns the parsed result dict."""
     init_db()
     today = date.today().isoformat()
+
+    print(f"[0/6] Checking entry windows ({today})...")
+    _run_auto_tier1(today)
 
     print(f"[1/6] Loading positions and watchlist ({today})...")
     positions = pos_store.get_open_positions()

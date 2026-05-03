@@ -37,6 +37,27 @@ def call(system: str, user: str, model: str = MODEL) -> str:
             raise
 
 
+def call_with_search(system: str, user: str, model: str = MODEL) -> str:
+    """Send a prompt with web search enabled. Returns all text content concatenated."""
+    client = _get_client()
+    for attempt in range(2):
+        try:
+            msg = client.messages.create(
+                model=model,
+                max_tokens=MAX_TOKENS,
+                system=system,
+                messages=[{"role": "user", "content": user}],
+                tools=[{"type": "web_search_20250305", "name": "web_search"}],
+            )
+            text_parts = [block.text for block in msg.content if hasattr(block, "text")]
+            return "\n".join(text_parts)
+        except anthropic.APIError:
+            if attempt == 0:
+                time.sleep(2)
+                continue
+            raise
+
+
 def call_with_pdf(system: str, user: str, pdf_bytes: bytes, model: str = MODEL) -> str:
     """Send a prompt with a PDF document attached and return the response."""
     client = _get_client()

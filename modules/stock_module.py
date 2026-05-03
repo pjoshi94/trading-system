@@ -109,7 +109,6 @@ def _build_watchlist_context(ticker: str) -> str:
     else:
         parts.append(f"{ticker} is not currently on the watchlist.")
 
-    # Pull the relevant section from the checkpoint
     pattern = rf"\*\*(?:Rank \d+: )?{re.escape(ticker)}\b[^*]*\*\*.*?(?=\n\*\*|\Z)"
     match = re.search(pattern, checkpoint, re.DOTALL)
     if match:
@@ -118,17 +117,83 @@ def _build_watchlist_context(ticker: str) -> str:
     return "\n".join(parts)
 
 
-def run(ticker: str) -> dict:
-    """Run a full stock deep dive. Returns the parsed analysis dict."""
+def run_tier1(ticker: str, dry_run: bool = False) -> dict:
+    """
+    Quick Tier 1 filter — news + context only, no Quiver Quant.
+    Returns dict with slack_summary (short verdict) and full_analysis (stored in DB).
+    Does NOT post to Slack — caller handles posting.
+    """
     init_db()
     ticker = ticker.upper()
     today = date.today().isoformat()
 
-    print(f"[1/6] Loading context for {ticker}...")
+    print(f"[tier1/1] Loading context for {ticker}...")
     watchlist_context = _build_watchlist_context(ticker)
-    print(f"       watchlist context: {len(watchlist_context)} chars")
 
-    print("[2/6] Fetching Quiver Quant data...")
+    print("[tier1/2] Fetching news (web search)...")
+    news_data = _fetch_news(ticker)
+
+    print("[tier1/3] Running Claude Tier 1 analysis...")
+    context = context_builder.build_context("stock_deep_dive")
+    user_prompt = STOCK_DEEP_DIVE_PROMPT.format(
+        ticker=ticker,
+        date=today,
+        congress_data="[Tier 1 — Quiver Quant data not fetched at this stage]",
+        news_data=news_data,
+        watchlist_context=watchlist_context,
+    )
+    raw = claude_api.call(system=context, user=user_prompt)
+
+    try:
+        result = _parse_json(raw)
+    except ValueError:
+        result = {"slack_report": raw, "summary": raw[:200]}
+
+    slack_summary = (
+        result.get("slack_summary")
+        or result.get("slack_report")
+        or result.get("summary", "")
+    )
+    full_analysis = result.get("full_analysis") or raw
+
+    slack_summary = context_builder.inject_position_context(slack_summary)
+
+    analysis_id = None
+    if not dry_run:
+        print("[tier1/4] Storing analysis...")
+        analysis_id = analyses.store_analysis(
+            type="stock_deep_dive",
+            ticker=ticker,
+            report_date=today,
+            summary=result.get("summary", slack_summary[:200]),
+            slack_summary=slack_summary,
+            full_analysis=full_analysis,
+        )
+
+    print(f"       Tier 1 complete for {ticker}")
+    return {
+        "status": "success",
+        "ticker": ticker,
+        "report_date": today,
+        "slack_summary": slack_summary,
+        "full_analysis": full_analysis,
+        "analysis_id": analysis_id,
+    }
+
+
+def run_tier2(ticker: str, dry_run: bool = False) -> dict:
+    """
+    Full Tier 2 deep dive — Quiver Quant + news + full analysis.
+    Does NOT post to Slack — caller handles posting.
+    """
+    init_db()
+    ticker = ticker.upper()
+    today = date.today().isoformat()
+
+    print(f"[tier2/1] Loading context for {ticker}...")
+    watchlist_context = _build_watchlist_context(ticker)
+
+    print("[tier2/2] Fetching Quiver Quant data...")
     try:
         quiver_data = quiver_get_all(ticker)
         congress_data = _format_quiver_data(quiver_data)
@@ -138,11 +203,10 @@ def run(ticker: str) -> dict:
         congress_data = f"Quiver Quant unavailable: {e}"
         print(f"       WARNING: {e}")
 
-    print("[3/6] Fetching news and analyst data (web search)...")
+    print("[tier2/3] Fetching news (web search)...")
     news_data = _fetch_news(ticker)
-    print(f"       {len(news_data)} chars")
 
-    print("[4/6] Running Claude deep dive analysis...")
+    print("[tier2/4] Running Claude deep dive analysis...")
     context = context_builder.build_context("stock_deep_dive")
     user_prompt = STOCK_DEEP_DIVE_PROMPT.format(
         ticker=ticker,
@@ -152,39 +216,71 @@ def run(ticker: str) -> dict:
         watchlist_context=watchlist_context,
     )
     raw = claude_api.call(system=context, user=user_prompt)
-    result = _parse_json(raw)
-    print("       Done.")
 
-    print("[5/6] Storing analysis...")
-    analysis_id = analyses.store_analysis(
-        type="stock_deep_dive",
-        ticker=ticker,
-        report_date=today,
-        summary=result.get("summary", ""),
-        full_output=json.dumps(result),
+    try:
+        result = _parse_json(raw)
+    except ValueError:
+        result = {"slack_report": raw, "summary": raw[:200]}
+
+    slack_summary = (
+        result.get("slack_summary")
+        or result.get("slack_report")
+        or result.get("summary", "")
     )
+    full_analysis = result.get("full_analysis") or raw
 
-    print("[6/6] Posting to Slack...")
+    slack_summary = context_builder.inject_position_context(slack_summary)
+
+    analysis_id = None
+    if not dry_run:
+        print("[tier2/5] Storing analysis...")
+        analysis_id = analyses.store_analysis(
+            type="stock_deep_dive_tier2",
+            ticker=ticker,
+            report_date=today,
+            summary=result.get("summary", slack_summary[:200]),
+            slack_summary=slack_summary,
+            full_analysis=full_analysis,
+        )
+
+    print(f"       Tier 2 complete for {ticker}")
+    return {
+        "status": "success",
+        "ticker": ticker,
+        "report_date": today,
+        "slack_summary": slack_summary,
+        "full_analysis": full_analysis,
+        "analysis_id": analysis_id,
+    }
+
+
+def run(ticker: str) -> dict:
+    """Full deep dive — runs Tier 2 and posts result to Slack."""
+    result = run_tier2(ticker)
+    if result["status"] != "success":
+        return result
+
     from clients.slack_client import send_to_main
     from slack.formatter import format_report
     from storage.analyses import update_slack_ts
 
-    slack_report = result.get("slack_report", "")
-    blocks = format_report(slack_report, header=f"Deep Dive: {ticker} — {today}")
-    ts = send_to_main(text=f"Deep dive: {ticker}", blocks=blocks)
-    update_slack_ts(analysis_id, ts)
-    print(f"       posted (ts={ts})")
+    ticker = result["ticker"]
+    today = result["report_date"]
+    slack_summary = result["slack_summary"]
 
-    print("\n" + "=" * 64)
-    print(f"DEEP DIVE: {ticker} — {today}")
-    print("=" * 64)
-    print(slack_report)
-    print("=" * 64)
+    blocks = format_report(slack_summary, header=f"Deep Dive: {ticker} — {today}")
+    ts = send_to_main(
+        text=f"Deep dive: {ticker} — reply `deep dive` in this thread for full Quiver Quant analysis",
+        blocks=blocks,
+    )
+    if result["analysis_id"]:
+        update_slack_ts(result["analysis_id"], ts)
+    print(f"       posted (ts={ts})")
 
     return result
 
 
 if __name__ == "__main__":
     import sys
-    ticker = sys.argv[1] if len(sys.argv) > 1 else "MU"
-    run(ticker)
+    t = sys.argv[1] if len(sys.argv) > 1 else "MU"
+    run(t)

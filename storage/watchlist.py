@@ -63,3 +63,41 @@ def remove_from_watchlist(ticker: str):
             "UPDATE watchlist SET status = 'removed', updated_at = CURRENT_TIMESTAMP WHERE ticker = ?",
             (ticker.upper(),),
         )
+
+
+def update_earnings_dates(
+    ticker: str,
+    earnings_date: str,
+    pre_earnings_block_starts: str = None,
+    entry_window_opens: str = None,
+    earnings_confidence: str = "high",
+):
+    """Set earnings-related date columns on a watchlist entry."""
+    update_watchlist_item(
+        ticker,
+        earnings_date=earnings_date,
+        pre_earnings_block_starts=pre_earnings_block_starts,
+        entry_window_opens=entry_window_opens,
+        earnings_confidence=earnings_confidence,
+        deep_dive_queued=1,
+    )
+
+
+def get_entry_window_ready(today: str) -> list[dict]:
+    """Return watchlist entries where entry_window_opens = today AND deep_dive_queued = 1."""
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT * FROM watchlist WHERE entry_window_opens = ? AND deep_dive_queued = 1 AND status = 'watching'",
+            (today,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def get_watchlist_by_earnings_date(earnings_date: str) -> list[dict]:
+    """Return active watchlist entries with a specific earnings_date."""
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT * FROM watchlist WHERE earnings_date = ? AND status = 'watching'",
+            (earnings_date,),
+        ).fetchall()
+        return [dict(r) for r in rows]

@@ -1,6 +1,7 @@
 import json
 import re
 import sqlite3
+import time
 from datetime import date
 
 import requests
@@ -13,6 +14,32 @@ from clients.moneyflows import MoneyFlowsClient
 from storage import analyses, pdf_store
 from storage import watchlist as watchlist_store
 from storage.db import init_db
+
+def _lookup_earnings_bulk(tickers: list[str]):
+    """Look up earnings dates for a batch of tickers. Sleeps 3s between calls if >3 tickers."""
+    from clients.earnings import lookup_earnings_date, compute_earnings_block_dates
+
+    for i, ticker in enumerate(tickers):
+        if i > 0 and len(tickers) > 3:
+            time.sleep(3)
+        print(f"       Earnings lookup: {ticker}...")
+        try:
+            result = lookup_earnings_date(ticker)
+            if result["status"] in ("found", "low_confidence") and result["earnings_date"]:
+                dates = compute_earnings_block_dates(result["earnings_date"])
+                watchlist_store.update_earnings_dates(
+                    ticker=ticker,
+                    earnings_date=result["earnings_date"],
+                    pre_earnings_block_starts=dates["pre_earnings_block_starts"],
+                    entry_window_opens=dates["entry_window_opens"],
+                    earnings_confidence=result["confidence"],
+                )
+                print(f"         {ticker}: earnings {result['earnings_date']} ({result['confidence']})")
+            else:
+                print(f"         {ticker}: not found")
+        except Exception as e:
+            print(f"         {ticker}: lookup failed — {e}")
+
 
 _BROWSER_UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -30,7 +57,9 @@ def _parse_json(text: str) -> dict:
     raise ValueError("Could not parse JSON from Claude response")
 
 
-def _apply_watchlist_updates(updates: list, report_date: str):
+def _apply_watchlist_updates(updates: list, report_date: str) -> list[str]:
+    """Apply watchlist updates from Claude analysis. Returns list of new/updated tickers."""
+    affected = []
     for update in updates:
         ticker = update.get("ticker", "").upper()
         action = update.get("action")
@@ -47,13 +76,13 @@ def _apply_watchlist_updates(updates: list, report_date: str):
                     notes=update.get("notes"),
                 )
             except sqlite3.IntegrityError:
-                # Ticker already exists — update instead
                 watchlist_store.update_watchlist_item(
                     ticker=ticker,
                     outlier_rank=update.get("outlier_rank"),
                     conviction=update.get("conviction"),
                     notes=update.get("notes"),
                 )
+            affected.append(ticker)
         elif action == "update":
             watchlist_store.update_watchlist_item(
                 ticker=ticker,
@@ -61,8 +90,10 @@ def _apply_watchlist_updates(updates: list, report_date: str):
                 conviction=update.get("conviction"),
                 notes=update.get("notes"),
             )
+            affected.append(ticker)
         elif action == "remove":
             watchlist_store.remove_from_watchlist(ticker)
+    return affected
 
 
 def _refresh_trading_brain(report_date: str):
@@ -168,10 +199,14 @@ def run() -> dict:
     print("[6/7] Writing checkpoints and updating DB...")
     write_brain_file("OUTLIER50_CHECKPOINT.md", result["checkpoint_update"])
 
-    _apply_watchlist_updates(result.get("watchlist_updates", []), report_date)
+    affected_tickers = _apply_watchlist_updates(result.get("watchlist_updates", []), report_date)
 
     if result.get("bmi") is not None:
         analyses.store_bmi(report_date, float(result["bmi"]))
+
+    if affected_tickers:
+        print(f"       Looking up earnings dates for {len(affected_tickers)} ticker(s)...")
+        _lookup_earnings_bulk(affected_tickers)
 
     analysis_id = analyses.store_analysis(
         type="outlier50",
