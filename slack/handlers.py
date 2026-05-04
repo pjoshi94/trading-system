@@ -364,8 +364,8 @@ def _handle_position_command(text: str, say, kwargs: dict):
 def _answer_question(question: str, say, thread_ts: str = None):
     kwargs = {"thread_ts": thread_ts} if thread_ts else {}
     try:
-        context = context_builder.build_context("daily_check")
-        response = claude_api.call(system=context, user=question)
+        context = context_builder.build_context("qa")
+        response = claude_api.call_with_search(system=context, user=question)
         for i in range(0, len(response), 2900):
             say(response[i : i + 2900], **kwargs)
     except Exception as e:

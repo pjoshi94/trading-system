@@ -9,6 +9,9 @@ _EXTRAS: dict[str, list[str]] = {
     "daily_check":     ["MARKET_CONDITIONS.md", "WEEKLY_CHECKPOINT.md"],
     "stock_deep_dive": ["OUTLIER50_CHECKPOINT.md", "MARKET_CONDITIONS.md"],
     "post_earnings":   ["OUTLIER50_CHECKPOINT.md", "MARKET_CONDITIONS.md"],
+    # Full context for Q&A — includes all checkpoint files so the bot can
+    # answer questions about any stock, position, or market condition
+    "qa":              ["OUTLIER50_CHECKPOINT.md", "WEEKLY_CHECKPOINT.md", "MARKET_CONDITIONS.md"],
 }
 
 
