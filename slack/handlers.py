@@ -1,4 +1,5 @@
 import re
+import traceback
 from datetime import date, datetime, timedelta
 
 from brain import claude_api, context_builder
@@ -58,6 +59,8 @@ def route(text: str, say, thread_ts: str = None):
             from modules.outlier50_module import run
             run()
         except Exception as e:
+            print(f"[ERROR] outlier50 failed: {type(e).__name__}: {e}")
+            traceback.print_exc()
             say(f"Outlier 50 failed: {e}", **kwargs)
 
     elif clean == "weekly":
@@ -66,6 +69,8 @@ def route(text: str, say, thread_ts: str = None):
             from modules.weekly_module import run
             run()
         except Exception as e:
+            print(f"[ERROR] weekly failed: {type(e).__name__}: {e}")
+            traceback.print_exc()
             say(f"Weekly Flows failed: {e}", **kwargs)
 
     elif clean == "daily":
@@ -74,6 +79,8 @@ def route(text: str, say, thread_ts: str = None):
             from modules.daily_module import run
             run()
         except Exception as e:
+            print(f"[ERROR] daily failed: {type(e).__name__}: {e}")
+            traceback.print_exc()
             say(f"Nightly check failed: {e}", **kwargs)
 
     # ── Stock commands ────────────────────────────────────────────────────
@@ -362,6 +369,8 @@ def _answer_question(question: str, say, thread_ts: str = None):
         for i in range(0, len(response), 2900):
             say(response[i : i + 2900], **kwargs)
     except Exception as e:
+        print(f"[ERROR] _answer_question failed: {type(e).__name__}: {e}")
+        traceback.print_exc()
         err = str(e)
         if "Connection" in err or "connect" in err.lower() or "timeout" in err.lower():
             say("Network hiccup connecting to AI — please try again in a moment.", **kwargs)
