@@ -328,9 +328,14 @@ def _handle_watchlist_add(ticker: str, say, kwargs: dict):
         except sqlite3.IntegrityError:
             wl_store.update_watchlist_item(ticker, status="watching")
 
-        # Earnings lookup
-        from clients.earnings import lookup_earnings_date, compute_earnings_block_dates
-        result = lookup_earnings_date(ticker)
+        # Earnings lookup — isolated so a rate-limit or API failure
+        # doesn't undo the watchlist add that already succeeded.
+        try:
+            from clients.earnings import lookup_earnings_date, compute_earnings_block_dates
+            result = lookup_earnings_date(ticker)
+        except Exception as e:
+            print(f"[watchlist] earnings lookup failed for {ticker}: {e}")
+            result = {"status": "not_found", "earnings_date": None}
 
         if result["status"] in ("found", "low_confidence") and result["earnings_date"]:
             dates = compute_earnings_block_dates(result["earnings_date"])
@@ -352,7 +357,7 @@ def _handle_watchlist_add(ticker: str, say, kwargs: dict):
         else:
             say(
                 f":white_check_mark: *{ticker}* added to watchlist.\n"
-                f":warning: Could not find earnings date — set manually with "
+                f":warning: Could not look up earnings date — set it with "
                 f"`earnings set {ticker} YYYY-MM-DD`",
                 **kwargs,
             )
