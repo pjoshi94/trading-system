@@ -362,7 +362,11 @@ def _answer_question(question: str, say, thread_ts: str = None):
         for i in range(0, len(response), 2900):
             say(response[i : i + 2900], **kwargs)
     except Exception as e:
-        say(f"Sorry, something went wrong: {e}", **kwargs)
+        err = str(e)
+        if "Connection" in err or "connect" in err.lower() or "timeout" in err.lower():
+            say("Network hiccup connecting to AI — please try again in a moment.", **kwargs)
+        else:
+            say(f"Sorry, something went wrong: {e}", **kwargs)
 
 
 def _help_text() -> str:
