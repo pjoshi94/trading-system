@@ -40,14 +40,21 @@ def handle_message(event, say):
         return
 
     channel_type = event.get("channel_type")
+    channel_id = event.get("channel", "")
     text = event.get("text", "")
     thread_ts = event.get("thread_ts")
     ts = event.get("ts")
 
+    # Respond to everything in the main trading channel (no @ required)
+    trading_channel = settings.SLACK_CHANNEL_ID or ""
+    in_trading_channel = channel_id == trading_channel
+
     if channel_type == "im":
         route(text, say, thread_ts or ts)
+    elif in_trading_channel:
+        route(text, say, thread_ts or ts)
     elif thread_ts and thread_ts != ts:
-        # Thread reply in a channel — only handle recognized thread keywords
+        # Thread reply in other channels — only handle recognized thread keywords
         if is_thread_keyword(text):
             route(text, say, thread_ts)
 
