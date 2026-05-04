@@ -15,6 +15,50 @@ _EXTRAS: dict[str, list[str]] = {
 }
 
 
+def _live_db_snapshot() -> str:
+    """Pull current positions and watchlist from DB and return as a formatted string.
+
+    This is injected into the qa context so Q&A always reflects actual DB state
+    rather than relying on TRADING_BRAIN.md being perfectly in sync.
+    """
+    try:
+        from storage.positions import get_open_positions
+        from storage.watchlist import get_watchlist
+        positions = get_open_positions()
+        watchlist = get_watchlist()
+    except Exception:
+        return ""
+
+    lines = ["## LIVE DB SNAPSHOT (authoritative — overrides anything in TRADING_BRAIN.md)"]
+
+    if positions:
+        lines.append("\n### Open Positions")
+        lines.append("| Ticker | Shares | Entry | Date | Stop | Target |")
+        lines.append("|--------|--------|-------|------|------|--------|")
+        for p in positions:
+            target = round(p["entry_price"] * 1.225, 2)
+            lines.append(
+                f"| {p['ticker']} | {p['shares']} | ${p['entry_price']:.2f} | "
+                f"{p['entry_date']} | ${p['stop_loss']:.2f} | ~${target:.2f} |"
+            )
+    else:
+        lines.append("\n### Open Positions\nNone.")
+
+    if watchlist:
+        lines.append("\n### Watchlist")
+        lines.append("| Ticker | Rank | Conviction | Sector |")
+        lines.append("|--------|------|------------|--------|")
+        for w in watchlist:
+            lines.append(
+                f"| {w['ticker']} | {w.get('outlier_rank') or '—'} | "
+                f"{w.get('conviction') or '—'} | {w.get('sector') or '—'} |"
+            )
+    else:
+        lines.append("\n### Watchlist\nEmpty — no stocks added yet.")
+
+    return "\n".join(lines)
+
+
 def build_context(module_type: str) -> str:
     parts = [
         SYSTEM_CONTEXT,
@@ -22,6 +66,10 @@ def build_context(module_type: str) -> str:
     ]
     for filename in _EXTRAS.get(module_type, []):
         parts.append(read_brain_file(filename))
+    if module_type == "qa":
+        snapshot = _live_db_snapshot()
+        if snapshot:
+            parts.append(snapshot)
     return "\n\n---\n\n".join(parts)
 
 

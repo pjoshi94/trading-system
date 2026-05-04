@@ -19,6 +19,17 @@ _STOP_UPDATE_RE = re.compile(
     r"\b(update|raise|move|set|tighten)\b.{0,40}\bstop\b.*\$\d",
     re.IGNORECASE,
 )
+# Watchlist natural language: "add X to watchlist", "watch X", "track X", "remove X"
+_WATCHLIST_ADD_RE = re.compile(
+    r"\b(add|watch|track|put|start watching)\b.{1,30}\b([A-Z]{2,5})\b.{0,30}\b(watchlist|watch list)\b"
+    r"|\b(watchlist|watch list)\b.{0,20}\b([A-Z]{2,5})\b"
+    r"|\b(add|track|watch)\b\s+([A-Z]{2,5})\b",
+    re.IGNORECASE,
+)
+_WATCHLIST_REMOVE_RE = re.compile(
+    r"\b(remove|drop|delete|stop watching|take off)\b.{1,30}\b([A-Z]{2,5})\b",
+    re.IGNORECASE,
+)
 
 
 def _clean(text: str) -> str:
@@ -93,11 +104,30 @@ def route(text: str, say, thread_ts: str = None):
         ticker = clean.split()[-1].upper()
         _handle_watchlist_add(ticker, say, kwargs)
 
+    elif re.match(r"^watchlist remove [a-z]+$", clean):
+        ticker = clean.split()[-1].upper()
+        _handle_watchlist_remove(ticker, say, kwargs)
+
     elif re.match(r"^earnings set [a-z]+ \d{4}-\d{2}-\d{2}$", clean):
         parts = clean.split()
         ticker = parts[2].upper()
         earnings_date = parts[3]
         _handle_earnings_set(ticker, earnings_date, say, kwargs)
+
+    elif _WATCHLIST_REMOVE_RE.search(_clean(text)) and not _is_position_command(_clean(text)):
+        m = _WATCHLIST_REMOVE_RE.search(_clean(text))
+        ticker = (m.group(2) or "").upper()
+        if ticker:
+            _handle_watchlist_remove(ticker, say, kwargs)
+        else:
+            _answer_question(_clean(text), say, thread_ts)
+
+    elif _WATCHLIST_ADD_RE.search(_clean(text)) and not _is_position_command(_clean(text)):
+        ticker = _extract_watchlist_ticker(_clean(text))
+        if ticker:
+            _handle_watchlist_add(ticker, say, kwargs)
+        else:
+            _answer_question(_clean(text), say, thread_ts)
 
     # ── DB read commands ──────────────────────────────────────────────────
     elif clean == "positions":
@@ -258,6 +288,31 @@ def _handle_why(ticker: str, say, thread_ts: str, kwargs: dict):
         say(f"Why {ticker} lookup failed: {e}", **kwargs)
 
 
+def _extract_watchlist_ticker(text: str) -> str:
+    """Extract ticker from a natural language watchlist add message.
+
+    Scans for actual uppercase-only sequences (2-5 chars) in the original text,
+    since real tickers are typed in caps while prepositions like 'to'/'my' are lowercase.
+    """
+    _SKIP = {"I", "A"}
+    for m in re.finditer(r"\b([A-Z]{2,5})\b", text):
+        if m.group(1) not in _SKIP:
+            return m.group(1)
+    return ""
+
+
+def _handle_watchlist_remove(ticker: str, say, kwargs: dict):
+    try:
+        item = wl_store.get_watchlist_item(ticker)
+        if not item:
+            say(f":x: *{ticker}* is not on the watchlist.", **kwargs)
+            return
+        wl_store.update_watchlist_item(ticker, status="removed")
+        say(f":white_check_mark: *{ticker}* removed from watchlist.", **kwargs)
+    except Exception as e:
+        say(f"Failed to remove {ticker}: {e}", **kwargs)
+
+
 def _handle_watchlist_add(ticker: str, say, kwargs: dict):
     say(f"Adding *{ticker}* to watchlist and looking up earnings date...", **kwargs)
     try:
@@ -307,11 +362,7 @@ def _handle_watchlist_add(ticker: str, say, kwargs: dict):
 
 def _handle_earnings_set(ticker: str, earnings_date: str, say, kwargs: dict):
     try:
-        # Validate date format and that it's in the future
         dt = datetime.strptime(earnings_date, "%Y-%m-%d").date()
-        if dt <= date.today():
-            say(f":x: {earnings_date} is in the past. Provide a future date.", **kwargs)
-            return
 
         item = wl_store.get_watchlist_item(ticker)
         if not item:
