@@ -46,6 +46,14 @@ def is_thread_keyword(text: str) -> bool:
 
 
 def route(text: str, say, thread_ts: str = None):
+    # If the message has multiple non-empty lines, route each one independently.
+    # This lets users batch-send commands like "add X\nadd Y\nadd Z".
+    lines = [l.strip() for l in _clean(text).splitlines() if l.strip()]
+    if len(lines) > 1:
+        for line in lines:
+            route(line, say, thread_ts)
+        return
+
     clean = _clean(text).lower()
     kwargs = {"thread_ts": thread_ts} if thread_ts else {}
 
