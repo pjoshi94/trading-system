@@ -10,8 +10,8 @@ MONEYFLOWS_PASSWORD = os.getenv("MONEYFLOWS_PASSWORD")
 # Quiver Quant
 QUIVERQUANT_API_KEY = os.getenv("QUIVERQUANT_API_KEY")
 
-# Claude API
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+# Claude API — strip whitespace so a trailing newline in the env var doesn't break HTTP headers
+ANTHROPIC_API_KEY = (os.getenv("ANTHROPIC_API_KEY") or "").strip() or None
 
 # Slack
 SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")
