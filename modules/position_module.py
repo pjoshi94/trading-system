@@ -10,12 +10,35 @@ from storage.db import init_db
 
 
 def _parse_json(text: str) -> dict:
+    # Try fenced code block first
     match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
     if match:
         return json.loads(match.group(1))
-    match = re.search(r"\{.*\}", text, re.DOTALL)
-    if match:
-        return json.loads(match.group(0))
+    # Walk string to find the first balanced {} block (handles extra text after JSON)
+    start = text.find("{")
+    if start == -1:
+        raise ValueError("No JSON object found in Claude response")
+    depth = 0
+    in_string = False
+    escape = False
+    for i, ch in enumerate(text[start:], start):
+        if escape:
+            escape = False
+            continue
+        if ch == "\\" and in_string:
+            escape = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return json.loads(text[start : i + 1])
     raise ValueError("Could not parse JSON from Claude response")
 
 
