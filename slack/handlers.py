@@ -2,6 +2,55 @@ import re
 import traceback
 from datetime import date, datetime, timedelta
 
+
+def _checkpoint_data(ticker: str) -> dict:
+    """Extract rank, sector, out20, map_score, conviction from OUTLIER50_CHECKPOINT.md."""
+    try:
+        text = read_brain_file("OUTLIER50_CHECKPOINT.md")
+    except Exception:
+        return {}
+
+    result = {}
+
+    # Detailed card: ### #N TICKER — Company — Sector
+    card_m = re.search(
+        rf"###\s+#(\d+)\s+{re.escape(ticker)}\s+—[^—\n]+—\s*([^\n]+)", text
+    )
+    if card_m:
+        result["outlier_rank"] = int(card_m.group(1))
+        result["sector"] = card_m.group(2).strip().title()
+        # Out20 and MAP from next few lines
+        card_body = text[card_m.end(): card_m.end() + 400]
+        out20_m = re.search(r"Out20 count[:\s]+(\d+)", card_body)
+        map_m = re.search(r"MAP[:\s]+([\d.]+)", card_body)
+        sig_m = re.search(r"Signal strength[:\s]+([A-Z\-]+)", card_body)
+        if out20_m:
+            result["out20_count"] = int(out20_m.group(1))
+        if map_m:
+            result["map_score"] = float(map_m.group(1))
+        if sig_m:
+            sig = sig_m.group(1)
+            result["conviction"] = "high" if "STRONG" in sig else "medium"
+
+    # Fallback: recurring table row | TICKER | appearances | Status | Notes |
+    if not result:
+        row_m = re.search(
+            rf"\|\s*{re.escape(ticker)}\s*\|\s*\d+\s*\|[^|]+\|\s*([^|]+)\|", text
+        )
+        if row_m:
+            notes = row_m.group(1).strip()
+            rank_m = re.search(r"Rank #(\d+)", notes)
+            out20_m = re.search(r"Out20\s+(\d+)", notes)
+            map_m = re.search(r"MAP\s+([\d.]+)", notes)
+            if rank_m:
+                result["outlier_rank"] = int(rank_m.group(1))
+            if out20_m:
+                result["out20_count"] = int(out20_m.group(1))
+            if map_m:
+                result["map_score"] = float(map_m.group(1))
+
+    return result
+
 from brain import claude_api, context_builder
 from brain.checkpoints import read_brain_file
 from slack.formatter import format_report, format_watchlist, format_positions, format_bmi_history
@@ -335,6 +384,11 @@ def _handle_watchlist_add(ticker: str, say, kwargs: dict):
             wl_store.add_to_watchlist(ticker=ticker, added_date=today)
         except sqlite3.IntegrityError:
             wl_store.update_watchlist_item(ticker, status="watching")
+
+        # Pre-populate rank/sector/conviction from checkpoint if available
+        cp = _checkpoint_data(ticker)
+        if cp:
+            wl_store.update_watchlist_item(ticker, **cp)
 
         # Earnings lookup — isolated so a rate-limit or API failure
         # doesn't undo the watchlist add that already succeeded.
