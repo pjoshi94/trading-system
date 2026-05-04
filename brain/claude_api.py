@@ -5,8 +5,8 @@ import anthropic
 
 from config import settings
 
-MODEL = "claude-sonnet-4-5"
-MAX_TOKENS = 8192
+MODEL = "claude-sonnet-4-6"
+MAX_TOKENS = 16000
 
 _client: anthropic.Anthropic | None = None
 
