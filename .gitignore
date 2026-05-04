@@ -3,9 +3,5 @@ venv/
 __pycache__/
 *.pyc
 data/trading.db
-data/brain/TRADING_BRAIN.md
-data/brain/OUTLIER50_CHECKPOINT.md
-data/brain/WEEKLY_CHECKPOINT.md
-data/brain/MARKET_CONDITIONS.md
 *.log
 .DS_Store
