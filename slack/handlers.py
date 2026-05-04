@@ -172,10 +172,10 @@ def route(text: str, say, thread_ts: str = None):
         _handle_earnings_set(ticker, earnings_date, say, kwargs)
 
     elif _WATCHLIST_REMOVE_RE.search(_clean(text)) and not _is_position_command(_clean(text)):
-        m = _WATCHLIST_REMOVE_RE.search(_clean(text))
-        ticker = (m.group(2) or "").upper()
-        if ticker:
-            _handle_watchlist_remove(ticker, say, kwargs)
+        tickers = _extract_uppercase_tickers(_clean(text))
+        if tickers:
+            for ticker in tickers:
+                _handle_watchlist_remove(ticker, say, kwargs)
         else:
             _answer_question(_clean(text), say, thread_ts)
 
@@ -343,6 +343,13 @@ def _handle_why(ticker: str, say, thread_ts: str, kwargs: dict):
             say(full[i : i + 2900], **kwargs)
     except Exception as e:
         say(f"Why {ticker} lookup failed: {e}", **kwargs)
+
+
+def _extract_uppercase_tickers(text: str) -> list[str]:
+    """Return all uppercase-only 2-5 char tokens from text, excluding noise words."""
+    _SKIP = {"I", "A", "AND", "OR", "MY", "THE"}
+    return [m.group(1) for m in re.finditer(r"\b([A-Z]{2,5})\b", text)
+            if m.group(1) not in _SKIP]
 
 
 def _extract_watchlist_ticker(text: str) -> str:
